@@ -1,6 +1,8 @@
 package mobi.sevenwinds.app.budget
 
 import io.restassured.RestAssured
+import io.restassured.response.Response
+import mobi.sevenwinds.app.author.AuthorRecord
 import mobi.sevenwinds.common.ServerTest
 import mobi.sevenwinds.common.jsonBody
 import mobi.sevenwinds.common.toResponse
@@ -9,6 +11,7 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import org.junit.Assert
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+
 
 class BudgetApiKtTest : ServerTest() {
 
@@ -19,16 +22,18 @@ class BudgetApiKtTest : ServerTest() {
 
     @Test
     fun testBudgetPagination() {
-        addRecord(BudgetRecord(2020, 5, 10, BudgetType.Приход))
-        addRecord(BudgetRecord(2020, 5, 5, BudgetType.Приход))
-        addRecord(BudgetRecord(2020, 5, 20, BudgetType.Приход))
-        addRecord(BudgetRecord(2020, 5, 30, BudgetType.Приход))
-        addRecord(BudgetRecord(2020, 5, 40, BudgetType.Приход))
-        addRecord(BudgetRecord(2030, 1, 1, BudgetType.Расход))
+        addAuthorRecord(AuthorRecord("Igor"));
+        addRecord(BudgetRecord(2020, 5, 10, BudgetType.Приход, 1))
+        addRecord(BudgetRecord(2020, 5, 5, BudgetType.Приход, 1))
+        addRecord(BudgetRecord(2020, 5, 20, BudgetType.Приход, 1))
+        addRecord(BudgetRecord(2020, 5, 30, BudgetType.Приход, 1))
+        addRecord(BudgetRecord(2020, 5, 40, BudgetType.Приход, 1))
+        addRecord(BudgetRecord(2030, 1, 1, BudgetType.Расход, 1))
 
         RestAssured.given()
             .queryParam("limit", 3)
             .queryParam("offset", 1)
+            .queryParam("authorName", "Igor")
             .get("/budget/year/2020/stats")
             .toResponse<BudgetYearStatsResponse>().let { response ->
                 println("${response.total} / ${response.items} / ${response.totalByType}")
@@ -65,12 +70,12 @@ class BudgetApiKtTest : ServerTest() {
     @Test
     fun testInvalidMonthValues() {
         RestAssured.given()
-            .jsonBody(BudgetRecord(2020, -5, 5, BudgetType.Приход))
+            .jsonBody(BudgetRecord(2020, -5, 5, BudgetType.Приход, 1))
             .post("/budget/add")
             .then().statusCode(400)
 
         RestAssured.given()
-            .jsonBody(BudgetRecord(2020, 15, 5, BudgetType.Приход))
+            .jsonBody(BudgetRecord(2020, 15, 5, BudgetType.Приход, 1))
             .post("/budget/add")
             .then().statusCode(400)
     }
@@ -82,5 +87,11 @@ class BudgetApiKtTest : ServerTest() {
             .toResponse<BudgetRecord>().let { response ->
                 Assert.assertEquals(record, response)
             }
+    }
+
+    private fun addAuthorRecord(record: AuthorRecord) {
+        RestAssured.given()
+            .jsonBody(record)
+            .post("/author/add")
     }
 }
